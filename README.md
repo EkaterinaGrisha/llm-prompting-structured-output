@@ -69,20 +69,3 @@ llm_cache/practice1_llm.json                  кэш ответов моделе
 ## Технологии
 
 Python, Jupyter, `openai` (OpenRouter), `gigachat`, Pydantic, pandas.
-
-## English summary
-
-Experiments with LLM APIs (GigaChat and free OpenRouter models). Topics covered:
-- system prompts and roles;
-- context length and dialogue memory;
-- sampling parameters and output-format control;
-- a combined multi-turn scenario;
-- structured output: Pydantic/JSON Schema, strict mode, few-shot, fallback strategies, and GigaChat's beta structured output.
-
-Key findings:
-- A one-line role barely changes the answers.
-- Retrieval accuracy on a dense context drops from ~95% at 1K tokens to ~45% at 16K and ~10% at 64–120K tokens.
-- Structured output fixes the structure but not truthfulness: models invent missing values.
-- Moving deterministic logic (relative dates, filtering) from the prompt to code raised fully correct extractions from 20/28 to 28/28.
-
-The notebook is written in Russian.

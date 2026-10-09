@@ -1,0 +1,88 @@
+# Эксперименты с LLM: промпты, контекст, гиперпараметры и Structured Output
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/EkaterinaGrisha/llm-prompting-structured-output/blob/main/llm_prompting_and_structured_output.ipynb)
+[![nbviewer](https://img.shields.io/badge/render-nbviewer-orange)](https://nbviewer.org/github/EkaterinaGrisha/llm-prompting-structured-output/blob/main/llm_prompting_and_structured_output.ipynb)
+
+Исследование поведения больших языковых моделей при работе через API. В части 1 изучается влияние системного промпта, длины контекста, параметров генерации и инструкций о формате на ответы модели. Часть 2 посвящена генерации структурированного вывода (JSON Schema, Pydantic). Работа выполнена в рамках практического задания курса по работе с LLM.
+
+Все результаты получены на бесплатных моделях **GigaChat** (`GigaChat-2`, `GigaChat-2-Pro`, `GigaChat-2-Max`, `GigaChat-3`) и **OpenRouter** (`nvidia/nemotron-3-super-120b-a12b:free` и ещё шесть моделей). Ответы моделей приведены без редактирования и сохранены в выводах ячеек и в кэше `llm_cache/`.
+
+## Содержание
+
+### Часть 1. Работа с LLM по API
+
+| № | Тема | Эксперимент |
+|---|---|---|
+| 1 | Системные промпты и роли | 4 варианта системного промпта × краткая и развёрнутая роль × 2 сценария |
+| 2 | Контекст и его длина | память диалога, скользящее окно, порог потери контекста (до ≈120 тыс. токенов), длина ответа |
+| 3 | Гиперпараметры | `temperature` от 0 до 1,5 (творческий и логический сценарии, по 5 запусков), `max_tokens` |
+| 4 | Стиль и формат ответа | 3 формата × 3 вопроса × 2 варианта размещения инструкции × 3 запуска |
+| 5 | Комбинированный сценарий | 2 диалога по 7 ходов × 3 режима `temperature`, провоцирующие ходы |
+
+### Часть 2. Structured Output
+
+| № | Тема | Эксперимент |
+|---|---|---|
+| 1 | Pydantic → JSON Schema → `response_format` | добавление обязательных полей, некорректный ввод |
+| 2 | Strict vs Non-Strict | конфликт промпта и схемы |
+| 3 | Structured Output vs JSON в промпте | 5–10 запусков на вариант |
+| 4 | Few-shot | zero-shot и few-shot на эталонном наборе из 14 сообщений |
+| 5 | Контекст и Structured Output | короткий и длинный контекст |
+| 6 | Fallback-стратегии | 7 моделей OpenRouter и 5 моделей GigaChat |
+| 7 | Structured Output в GigaChat | ограничения бета-версии, function calling как обходное решение |
+| 8 | Схема vs промпт | распределение логики между схемой, промптом и кодом |
+
+## Основные результаты
+
+- **Роль.** Краткая роль («Ты — преподаватель.») слабо влияет на ответ: лексическая близость к ответу без роли составляет 0,51–0,64. Стиль определяется развёрнутыми инструкциями (0,24–0,52).
+- **Длинный контекст.** На контексте из однотипных фактов доля верных ответов снижается с 93–97% при ≈1 тыс. токенов до 43–47% при ≈16 тыс. и до 7–13% при 64–120 тыс. При этом запрос объёмом ≈120 тыс. токенов обрабатывается без ошибок.
+- **Длина ответа.** Явное указание длины эффективно, если задавать её в словах: отклонение 3–12%. Длину в токенах модель интерпретирует как число слов (+48…64%).
+- **Параметры генерации.**
+  - `temperature=0` в GigaChat не обеспечивает детерминированности.
+  - При T = 1,5 нарушаются языковая норма и логика.
+  - `max_tokens` усекает ответ, а не регулирует его длину.
+- **Комбинированный сценарий.** Первым нарушается формат, затем стиль (только по просьбе пользователя), последним — учёт контекста.
+- **Structured Output.** Нарушения структуры устраняются: у GigaChat-2 без схемы они были в 5 ответах из 10, со схемой — в 0. Однако достоверность содержания не гарантируется: модели генерируют вымышленные транзакции и суммы.
+- **Схема, промпт и код.** Перенос вычисления относительных дат и фильтрации транзакций без суммы из промпта в код повысил число полностью верных ответов с 20 до 28 из 28.
+- **GigaChat.** Structured Output находится в статусе бета-версии: у `GigaChat-2` (Lite) режим схемы возвращает пустой ответ на промптах с JSON-примерами и с длинной историей диалога. Обходное решение — function calling.
+
+## Структура репозитория
+
+```
+llm_prompting_and_structured_output.ipynb   ноутбук с кодом, ответами моделей и выводами
+requirements.txt                              зависимости
+.env.example                                  шаблон файла с ключами API
+certs/russian_trusted_root_ca.pem             корневой сертификат Минцифры для проверки SSL GigaChat
+llm_cache/practice1_llm.json                  кэш ответов моделей и ошибок API
+```
+
+## Воспроизведение
+
+1. Установить зависимости: `pip install -r requirements.txt` (проверено на Python 3.11).
+2. Скопировать `.env.example` в `.env` и указать ключи:
+   - OpenRouter — `OPENROUTER_API_KEY`;
+   - GigaChat — `GIGACHAT_CREDENTIALS`, тариф Freemium для физических лиц.
+3. Открыть ноутбук и выполнить ячейки. Ответы берутся из кэша, поэтому повторный запуск занимает несколько секунд и воспроизводит приведённые результаты. Для повторной отправки запросов установить `USE_CACHE = False`.
+
+Сертификат `certs/russian_trusted_root_ca.pem` загружен с официального ресурса https://www.gosuslugi.ru/crt. Его отпечаток SHA-256: `D2:6D:2D:02:31:B7:C3:9F:92:CC:73:85:12:BA:54:10:35:19:E4:40:5D:68:B5:BD:70:3E:97:88:CA:8E:CF:31`. Сертификат используется только как `ca_bundle_file` клиента GigaChat и в систему не устанавливается.
+
+## Технологии
+
+Python, Jupyter, `openai` (OpenRouter), `gigachat`, Pydantic, pandas.
+
+## English summary
+
+Experiments with LLM APIs (GigaChat and free OpenRouter models). Topics covered:
+- system prompts and roles;
+- context length and dialogue memory;
+- sampling parameters and output-format control;
+- a combined multi-turn scenario;
+- structured output: Pydantic/JSON Schema, strict mode, few-shot, fallback strategies, and GigaChat's beta structured output.
+
+Key findings:
+- A one-line role barely changes the answers.
+- Retrieval accuracy on a dense context drops from ~95% at 1K tokens to ~45% at 16K and ~10% at 64–120K tokens.
+- Structured output fixes the structure but not truthfulness: models invent missing values.
+- Moving deterministic logic (relative dates, filtering) from the prompt to code raised fully correct extractions from 20/28 to 28/28.
+
+The notebook is written in Russian.

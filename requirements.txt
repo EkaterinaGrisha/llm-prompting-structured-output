@@ -1,0 +1,7 @@
+openai>=1.54
+gigachat>=0.2.3,<0.3
+pydantic>=2.7
+python-dotenv>=1.0
+pandas>=2.0
+httpx>=0.27
+ipykernel>=6.29
